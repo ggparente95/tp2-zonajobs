@@ -1,3 +1,6 @@
+.DS_Store
+
+*.csv
 train.csv
 test.csv
 __pycache__/
