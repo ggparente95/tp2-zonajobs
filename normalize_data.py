@@ -30,9 +30,9 @@ def fill_nans(df):
     df['metroscubiertos'].fillna(0, inplace=True)
 
     # Agrego a los que son nans, los tipos, ciudad y provincia mas comunes.
-    df['tipodepropiedad'].fillna(df['tipodepropiedad'].value_counts().index[0], inplace=True)
-    df['ciudad'].fillna(df['ciudad'].value_counts().index[0], inplace=True)
-    df['provincia'].fillna(df['provincia'].value_counts().index[0], inplace=True)
+    df['tipodepropiedad'].fillna(df['tipodepropiedad'].value_counts().idxmax(), inplace=True)
+    df['ciudad'].fillna(df['ciudad'].value_counts().idxmax(), inplace=True)
+    df['provincia'].fillna(df['provincia'].value_counts().idxmax(), inplace=True)
     
     # Asigno como baños y habitaciones nulas el promedio para el tipo de propiedad por ciudad en el que esta. 
     # No se puede asignarle "0" baños o "0" habitaciones porque no tendria sentido.
