@@ -11,18 +11,21 @@ def is_outlier(group):
     return ~group.between(precio_min, precio_max)
 
 
-def delete_invalid_registers(df):
+def delete_invalid_registers(df_orig):
     
     # Elimino propiedades que no tengan ni ciudad o provincia.
-    df.dropna(subset=['ciudad','provincia'], inplace=True)
+    df = df_orig.dropna(subset=['ciudad','provincia'])
     
     # Elimino aquellas propiedades sin tipo. (Son pocas).
-    df.dropna(subset=['tipodepropiedad'],inplace=True)
+    df = df_orig.dropna(subset=['tipodepropiedad'])
     
     return df
 
 
-def fill_nans(df):
+def fill_nans(df_orig):
+    
+    df = df_orig.copy()
+    
     # Completo los nans de metros totales, con lo que tengan en la columna de metros cubiertos.
     df['metrostotales'].fillna(df['metroscubiertos'], inplace=True)
 
@@ -53,16 +56,18 @@ def fill_nans(df):
     return df
 
     
-def getNormalizedDataset(df, mode='train'):
+def getNormalizedDataset(df_orig, mode='train'):
     ''' Devuelve el dataset de propiedades, completando valores nulos, arreglando errores y removiendo outliers. '''
 
+    df = df_orig.copy()
+    
     if mode=='train':    
         
         df = delete_invalid_registers(df)
         
         df = fill_nans(df)
 
-        df['precio_m2'] = df['precio']/df['metrostotales']
+        df.loc[:,'precio_m2'] = df['precio']/df['metrostotales']
 
         # Limpio los outliers
         df = df[~df.groupby('tipodepropiedad')['precio_m2'].apply(is_outlier)]
@@ -73,7 +78,7 @@ def getNormalizedDataset(df, mode='train'):
         # Se asigna para estos casos, los metros cubiertos como totales.
         df.loc[df['metrostotales']<df['metroscubiertos'], 'metrostotales'] = df['metroscubiertos']
 
-        df['extras'] = df['garages']+df['piscina']+df['usosmultiples']+df['gimnasio']
+        df.loc[:,'extras'] = df['garages']+df['piscina']+df['usosmultiples']+df['gimnasio']
     
     else:
         
@@ -81,19 +86,19 @@ def getNormalizedDataset(df, mode='train'):
         
         df.loc[df['metrostotales']<df['metroscubiertos'], 'metrostotales'] = df['metroscubiertos']
 
-        df['extras'] = df['garages']+df['piscina']+df['usosmultiples']+df['gimnasio']
+        df.loc[:,'extras'] = df['garages']+df['piscina']+df['usosmultiples']+df['gimnasio']
 
-        
+ 
     df.drop(['direccion','idzona','lat','lng','titulo','descripcion'], axis=1, inplace=True)
-    df['garages'] = df['garages'].astype(int)
-    df['antiguedad'] = df['antiguedad'].astype(int)
-    df['banos'] = df['banos'].astype(int)
-    df['habitaciones'] = df['habitaciones'].astype(int)
-    df['metroscubiertos'] = df['metroscubiertos'].astype(int)
-    df['metrostotales'] = df['metrostotales'].astype(int)
-    df['dia'] = df.fecha.dt.day
-    df['mes'] = df.fecha.dt.month
-    df['anio'] = df.fecha.dt.year
+    df.loc[:,'garages'] = df['garages'].astype(int)
+    df.loc[:,'antiguedad'] = df['antiguedad'].astype(int)
+    df.loc[:,'banos'] = df['banos'].astype(int)
+    df.loc[:,'habitaciones'] = df['habitaciones'].astype(int)
+    df.loc[:,'metroscubiertos'] = df['metroscubiertos'].astype(int)
+    df.loc[:,'metrostotales'] = df['metrostotales'].astype(int)
+    df.loc[:,'dia'] = df.fecha.dt.day
+    df.loc[:,'mes'] = df.fecha.dt.month
+    df.loc[:,'anio'] = df.fecha.dt.year
     df.drop('fecha', axis=1, inplace=True)
     
     return df
