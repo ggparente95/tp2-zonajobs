@@ -1,5 +1,5 @@
 import pandas as pd
-
+import numpy as np
 
 def is_outlier(group):
     ''' Para cada grupo devuelve por cada valor si es o no outlier. '''
@@ -103,3 +103,68 @@ def getNormalizedDataset(df_orig, mode='train'):
     
     return df
 
+
+def normailize_df(refDf, train):
+    df = refDf.copy()
+    df['año'] = df['fecha'].dt.year
+    df['antiguedad'] = df['antiguedad'] + (2016 - df['año']) # Se normaliza la antiguedad.
+    df.antiguedad = df.antiguedad.fillna(0) #Asumo que si no tiene antiguedad entonces es nuevo
+    df.drop(["direccion", 'descripcion', 'lat', 'lng', 'fecha', 'titulo'], axis=1, inplace=True)
+    
+    nulltotales = df[df['metrostotales'].isnull()]
+    nullcubiertos = df[df['metroscubiertos'].isnull()]
+    notnullapart = df[(~ df['metrostotales'].isnull()) & (df['metrostotales'] < df['metroscubiertos'])]
+    notnullapart2 = df[(~ df['metrostotales'].isnull()) & (df['metrostotales'] > df['metroscubiertos'])]
+    notnullapart3 = df[(~ df['metrostotales'].isnull()) & (df['metrostotales'] == df['metroscubiertos'])]
+ 
+    df['habitable'] = False
+    tipodepropiedades = df.tipodepropiedad.cat.categories.to_list()
+    for tipodepropiedad in tipodepropiedades: 
+              
+        idsNullMetrosTotales = (df.tipodepropiedad == tipodepropiedad) & (df.metrostotales.isnull())
+        idsNullMetrosCubiertos = (df.tipodepropiedad == tipodepropiedad) & (df.metroscubiertos.isnull())
+
+
+        ## Verificamos si la cantidad de registros con metros cubiertos nulos es mayor a 2/5 de los totales. Si es asi 
+        ## los consideramos propiedades no habitables. Y los tratamos de manera diferente
+        if(len(nullcubiertos[nullcubiertos.tipodepropiedad == tipodepropiedad]) >= 2/5* len(df[df.tipodepropiedad == tipodepropiedad])):
+            df.metrostotales.fillna(0, inplace=True)
+            df.metroscubiertos.fillna(0, inplace=True)
+        else:
+            df[idsNullMetrosTotales]['metrostotales'] =  df[idsNullMetrosTotales]['metroscubiertos']
+            df[idsNullMetrosCubiertos]['metroscubiertos'] =  df[idsNullMetrosCubiertos]['metrostotales']
+
+        #Si la moda del tipo de propiedad de banos y habitaciones son ambas distintas de nan entonces la propiedad es habitable.
+        banos = df[df.tipodepropiedad == tipodepropiedad].banos.mode(dropna=False);
+        habitaciones = df[df.tipodepropiedad == tipodepropiedad].habitaciones.mode(dropna=False);
+        df.loc[(df.tipodepropiedad == tipodepropiedad), 'habitable'] = not(np.isnan(banos[0]) and np.isnan(habitaciones[0]))
+    
+    df['metros'] = df['metrostotales'] + df['metroscubiertos']
+    df.habitaciones = df.habitaciones.fillna(0)
+    df.garages = df.garages.fillna(0)
+    df.banos = df.banos.fillna(0)
+
+    
+    if(train):
+
+        def is_outlier(group):
+            Q1 = group.quantile(0.25)
+            Q3 = group.quantile(0.75)
+            IQR = Q3 - Q1
+            precio_min = Q1 - 1.5 * IQR
+            precio_max = Q3 + 1.5 * IQR
+            return ~group.between(precio_min, precio_max)
+        df['precio_mt2'] = df['precio'] / df['metros']
+        print()
+        
+        df = df[~df.groupby('tipodepropiedad')['precio_mt2'].apply(is_outlier).fillna(False)]
+        idDel = df[df.tipodepropiedad == 'Garage'].index
+        df = df.drop(idDel)
+        idDel = df[df.tipodepropiedad == 'Hospedaje'].index
+        df = df.drop(idDel)
+        print('Despues de filtrar: ', df.shape)
+        cols = list(df.columns)
+        cols =  cols[:15] + cols[16:] +[cols[15]]
+        df = df[cols]
+
+    return df
