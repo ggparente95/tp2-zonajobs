@@ -87,6 +87,8 @@ def getNormalizedDataset(df_orig, mode='train'):
         df.loc[df['metrostotales']<df['metroscubiertos'], 'metrostotales'] = df['metroscubiertos']
 
         df.loc[:,'extras'] = df['garages']+df['piscina']+df['usosmultiples']+df['gimnasio']
+        
+        #df = df.drop(['garages','piscina','usosmultiples','gimnasio']
 
  
     df.drop(['direccion','idzona','lat','lng','titulo','descripcion'], axis=1, inplace=True)
@@ -167,4 +169,61 @@ def normailize_df(refDf, train):
         cols =  cols[:15] + cols[16:] +[cols[15]]
         df = df[cols]
 
+    return df
+
+
+def transformar_antiguedad(x):
+    if x<=20:
+        return 1
+    if x>20 and x<=40:
+        return 2
+    if x>40 and x<=60:
+        return 3
+    if x>60:
+        return 4
+
+    
+def getNormalizedDataset_2(df_orig, mode='train'):
+    ''' Devuelve el dataset de propiedades, completando valores nulos, arreglando errores y removiendo outliers. '''
+
+    df = df_orig.copy()
+    
+    if mode=='train':    
+        
+        df = delete_invalid_registers(df)
+        
+        df = fill_nans(df)
+
+        df.loc[:,'precio_m2'] = df['precio']/df['metrostotales']
+
+        # Limpio los outliers
+        df = df[~df.groupby('tipodepropiedad')['precio_m2'].apply(is_outlier)]
+
+        df.drop('precio_m2', axis=1, inplace=True)
+        
+        # Hay 70000 filas donde los metros totales son menores a los cubiertos. Esto es invalido, pero son muchos datos para descartar
+        # Se asigna para estos casos, los metros cubiertos como totales.
+        df.loc[df['metrostotales']<df['metroscubiertos'], 'metrostotales'] = df['metroscubiertos']
+
+        df.loc[:,'extras'] = df['garages']+df['piscina']+df['usosmultiples']+df['gimnasio']
+    
+    else:
+        
+        df = fill_nans(df)
+        
+        df.loc[df['metrostotales']<df['metroscubiertos'], 'metrostotales'] = df['metroscubiertos']
+
+        df.loc[:,'extras'] = df['garages']+df['piscina']+df['usosmultiples']+df['gimnasio']
+        
+        
+    df = df.drop(['garages','piscina','usosmultiples','gimnasio'], axis=1)
+    df.loc[:,'antiguedad'] = df['antiguedad'].transform(transformar_antiguedad).astype(int)
+    df.drop(['direccion','idzona','lat','lng','titulo','descripcion'], axis=1, inplace=True)
+    df.loc[:,'banos'] = df['banos'].astype(int)
+    df.loc[:,'habitaciones'] = df['habitaciones'].astype(int)
+    df.loc[:,'metroscubiertos'] = df['metroscubiertos'].astype(int)
+    df.loc[:,'metrostotales'] = df['metrostotales'].astype(int)
+    df.loc[:,'anio'] = df.fecha.dt.year
+    df.drop('fecha', axis=1, inplace=True)
+    
     return df
