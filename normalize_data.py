@@ -137,7 +137,7 @@ def normailize_df(refDf, train):
         #Si la moda del tipo de propiedad de banos y habitaciones son ambas distintas de nan entonces la propiedad es habitable.
         banos = df[df.tipodepropiedad == tipodepropiedad].banos.mode(dropna=False);
         habitaciones = df[df.tipodepropiedad == tipodepropiedad].habitaciones.mode(dropna=False);
-        df.loc[(df.tipodepropiedad == tipodepropiedad), 'habitable'] = not(np.isnan(banos[0]) and np.isnan(habitaciones[0]))
+        #df.loc[(df.tipodepropiedad == tipodepropiedad), 'habitable'] = not(np.isnan(banos[0]) and np.isnan(habitaciones[0]))
     
     df['metros'] = df['metrostotales'] + df['metroscubiertos']
     df.habitaciones = df.habitaciones.fillna(0)
